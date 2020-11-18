@@ -14,8 +14,8 @@ DOCUMENT_TITLE = "Test Page Yolo"
 # - Calculate the offset of styles after replacement
 # - Replace the whole paragraph
 # - Apply the styles
-# TODO - [[links]]
 # TODO - **bold**, __italic__
+# TODO - [[links]]
 # TODO - [links](url)
 # TODO - Heading levels
 
@@ -43,33 +43,32 @@ def insert_block(
     text,
     indentation=0,
     heading=0,
+    paragraph_style=None,
     extra_line=False,
 ):
+    text = (
+        "\t" * indentation +
+        ("H{}.".format(heading) if heading else "") +
+        text.replace("\n", "\v") +
+        "\n" * (2 if extra_line else 1)
+    )
     return [
         {
             "insertText": {
-                "text": (
-                    "\t" * indentation +
-                    ("H{}.".format(heading) if heading else "") +
-                    text.replace("\n", "\v") +
-                    "\n" * (2 if extra_line else 1)
-                ),
-                "endOfSegmentLocation": {
+                "text": text,
+                "location": {
+                    "index": 1,
                     "segmentId": None,
                 },
             },
         },
+        *(
+            [update_paragraph_style(paragraph_style, 1, 2)] if paragraph_style else []
+        )
     ]
 
 
-def insert_title(title):
-    return [
-        insert_block(title),
-        update_style("TITLE", 1, 3),
-    ]
-
-
-def update_style(style, start, end):
+def update_paragraph_style(style, start, end):
     return {
         "updateParagraphStyle": {
             "paragraphStyle": {
@@ -101,7 +100,6 @@ def main():
     drive = build('drive', 'v3', credentials=get_credentials(), developerKey=API_KEY)
 
     document = upsert_document(drive, docs, DOCUMENT_TITLE)
-    end_index = get_end_index(document)
     page = {
         "title": DOCUMENT_TITLE,
         "children": [
@@ -124,6 +122,32 @@ def main():
             },
         ]
     }
+
+    title = page["title"]
+    rewrite_document(docs, document, [
+        insert_block(title, paragraph_style="TITLE", extra_line=True),
+        *flatten_children(page["children"]),
+    ])
+
+    document = get_document(docs, document['documentId'])
+    end_index = get_end_index(document)
+    docs.documents().batchUpdate(
+        documentId=document['documentId'],
+        body={
+            "requests": [
+                {
+                    "createParagraphBullets": {
+                        "range": make_range(len(DOCUMENT_TITLE) + 3, end_index),
+                        "bulletPreset": "BULLET_DISC_CIRCLE_SQUARE",
+                    },
+                }
+            ],
+        },
+    ).execute()
+
+
+def rewrite_document(docs, document, elements):
+    end_index = get_end_index(document)
     docs.documents().batchUpdate(
         documentId=document['documentId'],
         body={
@@ -147,24 +171,7 @@ def main():
                         "range": make_range(1, 2),
                     },
                 },
-                *insert_title(page["title"]),
-                flatten_children(page["children"]),
-            ],
-        },
-    ).execute()
-
-    document = get_document(docs, document['documentId'])
-    end_index = get_end_index(document)
-    docs.documents().batchUpdate(
-        documentId=document['documentId'],
-        body={
-            "requests": [
-                {
-                    "createParagraphBullets": {
-                        "range": make_range(len(DOCUMENT_TITLE) + 3, end_index),
-                        "bulletPreset": "BULLET_DISC_CIRCLE_SQUARE",
-                    },
-                }
+                *reversed(elements),
             ],
         },
     ).execute()
