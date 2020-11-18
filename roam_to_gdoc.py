@@ -7,6 +7,23 @@ from credentials import get_credentials, API_KEY
 
 DOCUMENT_TITLE = "Test Page Yolo"
 
+# TODO - get actually reading json to work
+
+# Parsing and styling within Paragraphs.
+# - Process paragraphs backwards
+# - Calculate the offset of styles after replacement
+# - Replace the whole paragraph
+# - Apply the styles
+# TODO - [[links]]
+# TODO - **bold**, __italic__
+# TODO - [links](url)
+# TODO - Heading levels
+
+# TODO - Attr::
+# TODO - Images
+# TODO - Backlinks
+# TODO - {{table}}
+
 T = TypeVar('T')
 
 
