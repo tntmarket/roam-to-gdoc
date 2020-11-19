@@ -1,73 +1,59 @@
-from typing import List, TypeVar
-
 from googleapiclient.discovery import build
 
-from roam_to_gdoc.google.credentials import get_credentials, API_KEY
-from roam_to_gdoc.element import Element
-from roam_to_gdoc.roam import flatten_children
-from roam_to_gdoc.google.google_docs import make_range, rewrite_document, get_end_index
+from roam_to_gdoc.google.credentials import get_credentials
+from roam_to_gdoc.google.google_docs import rewrite_document
 
 DOCUMENT_TITLE = "Test Page Yolo"
 
 # TODO - get actually reading json to work
 
 # TODO - [alias]([[link]])
+# TODO - [[a [[nested]] link]]
 # TODO - Attr::
 # TODO - Images
 # TODO - Backlinks
 # TODO - {{table}}
 
+pages = [{
+    "title": DOCUMENT_TITLE,
+    "children": [
+        {
+            "string": "YOLO **SWAG** BRO",
+        },
+        {
+            "string": "My **__crayfish__** is [[[[very]] demanding]]",
+            "heading": 1,
+        },
+        {
+            "string": "[Yes](https://www.google.com) it is",
+            "children": [
+                {
+                    "string": "Line...\nBreak?",
+                },
+                {
+                    "string": "Baaaa [humbug]([[Hamburger]])",
+                },
+            ]
+        },
+    ]
+}]
 
 def main():
     docs = build('docs', 'v1', credentials=get_credentials())
     drive = build('drive', 'v3', credentials=get_credentials())
 
+    # with open('tmp/davelu-yelp.json') as f:
+    #     print(json.load(f))
+
+    page_name_to_document = {}
+
     folder_id = upsert_folder(drive)
-    document = upsert_document(drive, docs, DOCUMENT_TITLE, folder_id)
-    page = {
-        "title": DOCUMENT_TITLE,
-        "children": [
-            {
-                "string": "YOLO **SWAG** BRO",
-            },
-            {
-                "string": "My **__crayfish__** is [[demanding]]",
-                "heading": 1,
-            },
-            {
-                "string": "[Yes](https://www.google.com) it is",
-                "children": [
-                    {
-                        "string": "Line...\nBreak?",
-                    },
-                    {
-                        "string": "B",
-                    },
-                ]
-            },
-        ]
-    }
+    for page in pages:
+        page_name_to_document[page["title"]] = upsert_document(drive, docs, page["title"], folder_id)
 
-    rewrite_document(docs, document, [
-        Element(text=page["title"], heading=0, extra_line=True),
-        *flatten_children(page["children"]),
-    ])
-
-    document = get_document(docs, document['documentId'])
-    end_index = get_end_index(document)
-    docs.documents().batchUpdate(
-        documentId=document['documentId'],
-        body={
-            "requests": [
-                {
-                    "createParagraphBullets": {
-                        "range": make_range(len(DOCUMENT_TITLE) + 3, end_index),
-                        "bulletPreset": "BULLET_DISC_CIRCLE_SQUARE",
-                    },
-                }
-            ],
-        },
-    ).execute()
+    for page in pages:
+        document = page_name_to_document[page["title"]]
+        rewrite_document(docs, document, page)
 
 
 def upsert_document(drive, docs, title, folder_id):

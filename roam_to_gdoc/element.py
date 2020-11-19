@@ -8,7 +8,6 @@ class Element:
     style: Optional[str] = None
     heading: Optional[int] = None
     indentation: int = 0
-    extra_line: bool = False
 
 
 @dataclass

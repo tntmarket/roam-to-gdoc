@@ -3,15 +3,16 @@ from typing import List, Dict
 
 from roam_to_gdoc.element import Element
 from roam_to_gdoc.parse_markdown import markdown_to_style_and_text
+from roam_to_gdoc.roam import flatten_children
 
 
-def element_to_insert_request(element: Element) -> List[Dict]:
+def element_to_updates(element: Element) -> List[Dict]:
     styles, text = markdown_to_style_and_text(element.text.replace("\n", "\v"))
     start = element.indentation + 1
     return [
         {
             "insertText": {
-                "text": "\t" * element.indentation + text + "\n" * (2 if element.extra_line else 1),
+                "text": "\t" * element.indentation + text + "\n",
                 "location": {
                     "index": 1,
                     "segmentId": None,
@@ -56,11 +57,14 @@ def update_paragraph_style(style, start, end):
     }
 
 
-def rewrite_document(docs, document, elements):
+def rewrite_document(docs, document, page):
     end_index = get_end_index(document)
+    elements = list(reversed(flatten_children(page["children"])))
+    body_length = len('\n'.join(markdown_to_style_and_text(element.text)[1] for element in elements))
     docs.documents().batchUpdate(
         documentId=document['documentId'],
         body={
+            # Fill in the document backwards, so we can keep 0 index offset
             "requests": [
                 *(
                     [
@@ -69,13 +73,40 @@ def rewrite_document(docs, document, elements):
                                 "range": make_range(1, end_index),
                             },
                         },
+                        {
+                            "deleteParagraphBullets": {
+                                "range": make_range(1, 2),
+                            },
+                        },
                     ]
                     if end_index > 1 else []
                 ),
                 *chain.from_iterable(
-                    element_to_insert_request(element)
-                    for element in reversed(elements)
+                    element_to_updates(element)
+                    for element in elements
                 ),
+                # Bullet-ify after, to get convert indents into levels
+                {
+                    "createParagraphBullets": {
+                        "range": make_range(1, body_length + 1),
+                        "bulletPreset": "BULLET_DISC_CIRCLE_SQUARE",
+                    },
+                },
+                {
+                    "insertText": {
+                        "text": "\n",
+                        "location": {
+                            "index": 1,
+                            "segmentId": None,
+                        },
+                    },
+                },
+                {
+                    "deleteParagraphBullets": {
+                        "range": make_range(1, 2),
+                    },
+                },
+                element_to_updates(Element(text=page["title"], heading=0)),
             ],
         },
     ).execute()
