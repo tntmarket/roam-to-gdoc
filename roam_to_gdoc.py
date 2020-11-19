@@ -1,9 +1,11 @@
-from itertools import chain
 from typing import List, TypeVar
 
 from googleapiclient.discovery import build
 
 from credentials import get_credentials, API_KEY
+from element import Element
+from roam import flatten_children
+from google_docs import make_range, rewrite_document, get_end_index
 
 DOCUMENT_TITLE = "Test Page Yolo"
 
@@ -31,70 +33,6 @@ def filter_none(xs: List[T]) -> List[T]:
     return [x for x in xs if x]
 
 
-def make_range(start, end):
-    return {
-        "segmentId": None,
-        "startIndex": start,
-        "endIndex": end,
-    }
-
-
-def insert_block(
-    text,
-    indentation=0,
-    heading=0,
-    paragraph_style=None,
-    extra_line=False,
-):
-    text = (
-        "\t" * indentation +
-        ("H{}.".format(heading) if heading else "") +
-        text.replace("\n", "\v") +
-        "\n" * (2 if extra_line else 1)
-    )
-    return [
-        {
-            "insertText": {
-                "text": text,
-                "location": {
-                    "index": 1,
-                    "segmentId": None,
-                },
-            },
-        },
-        *(
-            [update_paragraph_style(paragraph_style, 1, 2)] if paragraph_style else []
-        )
-    ]
-
-
-def update_paragraph_style(style, start, end):
-    return {
-        "updateParagraphStyle": {
-            "paragraphStyle": {
-                "namedStyleType": style,
-            },
-            "fields": "namedStyleType",
-            "range": make_range(start, end),
-        },
-    }
-
-
-def block_to_inserts(json, indentation=0):
-    inserts = insert_block(json["string"], indentation, heading=json.get("heading"))
-
-    if "children" in json:
-        return inserts + flatten_children(json["children"], indentation + 1)
-
-    return inserts
-
-
-def flatten_children(children, indentation=0):
-    return list(chain.from_iterable(
-        block_to_inserts(block, indentation) for block in children
-    ))
-
-
 def main():
     docs = build('docs', 'v1', credentials=get_credentials(), developerKey=API_KEY)
     drive = build('drive', 'v3', credentials=get_credentials(), developerKey=API_KEY)
@@ -104,13 +42,13 @@ def main():
         "title": DOCUMENT_TITLE,
         "children": [
             {
-                "string": "YOLO SWAG BRO",
+                "string": "YOLO **SWAG** BRO",
             },
             {
-                "string": "My crayfish is demanding",
+                "string": "My __crayfish__ is demanding",
             },
             {
-                "string": "Yes it is",
+                "string": "[Yes](https://www.google.com) it is",
                 "children": [
                     {
                         "string": "Line...\nBreak?",
@@ -123,9 +61,8 @@ def main():
         ]
     }
 
-    title = page["title"]
     rewrite_document(docs, document, [
-        insert_block(title, paragraph_style="TITLE", extra_line=True),
+        Element(text=page["title"], heading="TITLE", extra_line=True),
         *flatten_children(page["children"]),
     ])
 
@@ -146,37 +83,6 @@ def main():
     ).execute()
 
 
-def rewrite_document(docs, document, elements):
-    end_index = get_end_index(document)
-    docs.documents().batchUpdate(
-        documentId=document['documentId'],
-        body={
-            "requests": [
-                *(
-                    [
-                        {
-                            "deleteContentRange": {
-                                "range": make_range(1, end_index),
-                            },
-                        },
-                    ]
-                    if end_index > 1 else []
-                ),
-                {
-                    "updateParagraphStyle": {
-                        "paragraphStyle": {
-                            "namedStyleType": "NORMAL_TEXT",
-                        },
-                        "fields": "namedStyleType",
-                        "range": make_range(1, 2),
-                    },
-                },
-                *reversed(elements),
-            ],
-        },
-    ).execute()
-
-
 def upsert_document(drive, docs, title):
     matches = drive.files().list(corpora="user", q="name = '{}'".format(title)).execute()['files']
     if matches:
@@ -189,12 +95,6 @@ def upsert_document(drive, docs, title):
 
 def get_document(docs, document_id):
     return docs.documents().get(documentId=document_id).execute()
-
-
-def get_end_index(document):
-    elements = document['body']['content']
-    # Exclude newline at end of segment
-    return elements[-1]['endIndex'] - 1
 
 
 if __name__ == '__main__':
