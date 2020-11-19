@@ -10,6 +10,10 @@ google-api-python-client = "*"
 google-auth-httplib2 = "*"
 google-auth-oauthlib = "*"
 markdown = "*"
+pyppeteer = "*"
+python-dotenv = "*"
+loguru = "*"
+psutil = "*"
 
 [requires]
 python_version = "3.9"

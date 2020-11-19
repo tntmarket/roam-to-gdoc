@@ -1,7 +1,7 @@
 from itertools import chain
 from typing import List
 
-from element import Element
+from roam_to_gdoc.element import Element
 
 
 def block_to_elements(json, indentation=0) -> List[Element]:

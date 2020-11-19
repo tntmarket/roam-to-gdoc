@@ -1,8 +1,8 @@
 from itertools import chain
 from typing import List, Dict
 
-from element import Element
-from parse_markdown import markdown_to_style_and_text
+from roam_to_gdoc.element import Element
+from roam_to_gdoc.parse_markdown import markdown_to_style_and_text
 
 
 def element_to_insert_request(element: Element) -> List[Dict]:

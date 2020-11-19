@@ -2,10 +2,10 @@ from typing import List, TypeVar
 
 from googleapiclient.discovery import build
 
-from credentials import get_credentials, API_KEY
-from element import Element
-from roam import flatten_children
-from google_docs import make_range, rewrite_document, get_end_index
+from roam_to_gdoc.credentials import get_credentials, API_KEY
+from roam_to_gdoc.element import Element
+from roam_to_gdoc.roam import flatten_children
+from roam_to_gdoc.google_docs import make_range, rewrite_document, get_end_index
 
 DOCUMENT_TITLE = "Test Page Yolo"
 

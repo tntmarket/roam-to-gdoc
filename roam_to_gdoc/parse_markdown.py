@@ -3,7 +3,7 @@ import markdown
 from markdown.extensions.wikilinks import WikiLinkExtension
 from html.parser import HTMLParser
 
-from element import Style
+from roam_to_gdoc.element import Style
 
 
 def markdown_to_style_and_text(text):
