@@ -2,29 +2,34 @@ from itertools import chain
 from typing import List, Dict
 
 from element import Element
+from parse_markdown import markdown_to_style_and_text
 
 
 def element_to_insert_request(element: Element) -> List[Dict]:
-    text = (
-        "\t" * element.indentation +
-        element.text.replace("\n", "\v") +
-        "\n" * (2 if element.extra_line else 1)
-    )
+    styles, text = markdown_to_style_and_text(element.text.replace("\n", "\v"))
+    start = element.indentation + 1
     return [
         {
             "insertText": {
-                "text": text,
+                "text": "\t" * element.indentation + text + "\n" * (2 if element.extra_line else 1),
                 "location": {
                     "index": 1,
                     "segmentId": None,
                 },
             },
         },
+        update_paragraph_style(element.heading, start, start + 1),
         *(
-            [update_paragraph_style(element.heading, 1, 2)]
-            if element.heading else []
+            {
+                "updateTextStyle": {
+                    "textStyle": {
+                        style.type: {"url": style.url} if style.type == "link" else True,
+                    },
+                    "fields": style.type,
+                    "range": make_range(start + style.start, start + style.end),
+                },
+            } for style in styles
         ),
-        update_style(1, len(text) + 1, bold=element.bold, italic=element.italic, url=element.url),
     ]
 
 
@@ -36,33 +41,16 @@ def make_range(start, end):
     }
 
 
+NAMED_STYLES = ['TITLE', 'HEADING_1', 'HEADING_2', 'HEADING_3']
+
+
 def update_paragraph_style(style, start, end):
     return {
         "updateParagraphStyle": {
             "paragraphStyle": {
-                "namedStyleType": style,
+                "namedStyleType": 'NORMAL_TEXT' if style is None else NAMED_STYLES[style],
             },
             "fields": "namedStyleType",
-            "range": make_range(start, end),
-        },
-    }
-
-
-def update_style(
-    start,
-    end,
-    bold=False,
-    italic=False,
-    url=None,
-):
-    return {
-        "updateTextStyle": {
-            "textStyle": {
-                "bold": bold,
-                "italic": italic,
-                "link": {"url": url} if url else None,
-            },
-            "fields": "bold,italic,link",
             "range": make_range(start, end),
         },
     }

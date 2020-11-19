@@ -6,11 +6,14 @@ from typing import Optional
 class Element:
     text: str
     style: Optional[str] = None
-    heading: Optional[str] = None
+    heading: Optional[int] = None
     indentation: int = 0
     extra_line: bool = False
-    bold: bool = False
-    italic: bool = False
+
+
+@dataclass
+class Style:
+    start: int
+    end: int
+    type: str
     url: Optional[str] = None
-
-

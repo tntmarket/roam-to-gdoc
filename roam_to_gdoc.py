@@ -11,16 +11,7 @@ DOCUMENT_TITLE = "Test Page Yolo"
 
 # TODO - get actually reading json to work
 
-# Parsing and styling within Paragraphs.
-# - Process paragraphs backwards
-# - Calculate the offset of styles after replacement
-# - Replace the whole paragraph
-# - Apply the styles
-# TODO - **bold**, __italic__
-# TODO - [[links]]
-# TODO - [links](url)
-# TODO - Heading levels
-
+# TODO - [alias]([[link]])
 # TODO - Attr::
 # TODO - Images
 # TODO - Backlinks
@@ -45,7 +36,8 @@ def main():
                 "string": "YOLO **SWAG** BRO",
             },
             {
-                "string": "My __crayfish__ is demanding",
+                "string": "My **__crayfish__** is [[demanding]]",
+                "heading": 1,
             },
             {
                 "string": "[Yes](https://www.google.com) it is",
@@ -62,7 +54,7 @@ def main():
     }
 
     rewrite_document(docs, document, [
-        Element(text=page["title"], heading="TITLE", extra_line=True),
+        Element(text=page["title"], heading=0, extra_line=True),
         *flatten_children(page["children"]),
     ])
 
