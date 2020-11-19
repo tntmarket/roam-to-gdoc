@@ -16,8 +16,6 @@ from roam_to_gdoc.scrape import patch_pyppeteer, scrape, Config
 @logger.catch(reraise=True)
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("directory", default=None, nargs="?",
-                        help="Directory of your notes are stored. Default to notes/")
     parser.add_argument("--debug", action="store_true",
                         help="Help debug by opening the browser in the foreground. Note that the "
                              "git repository will not be updated with that option.")

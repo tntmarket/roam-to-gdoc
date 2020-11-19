@@ -72,16 +72,10 @@ def rewrite_document(docs, document, elements):
                     ]
                     if end_index > 1 else []
                 ),
-                {
-                    "updateParagraphStyle": {
-                        "paragraphStyle": {
-                            "namedStyleType": "NORMAL_TEXT",
-                        },
-                        "fields": "namedStyleType",
-                        "range": make_range(1, 2),
-                    },
-                },
-                *chain.from_iterable(element_to_insert_request(element) for element in reversed(elements)),
+                *chain.from_iterable(
+                    element_to_insert_request(element)
+                    for element in reversed(elements)
+                ),
             ],
         },
     ).execute()

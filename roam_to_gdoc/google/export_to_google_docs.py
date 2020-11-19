@@ -2,10 +2,10 @@ from typing import List, TypeVar
 
 from googleapiclient.discovery import build
 
-from roam_to_gdoc.credentials import get_credentials, API_KEY
+from roam_to_gdoc.google.credentials import get_credentials, API_KEY
 from roam_to_gdoc.element import Element
 from roam_to_gdoc.roam import flatten_children
-from roam_to_gdoc.google_docs import make_range, rewrite_document, get_end_index
+from roam_to_gdoc.google.google_docs import make_range, rewrite_document, get_end_index
 
 DOCUMENT_TITLE = "Test Page Yolo"
 
@@ -17,18 +17,13 @@ DOCUMENT_TITLE = "Test Page Yolo"
 # TODO - Backlinks
 # TODO - {{table}}
 
-T = TypeVar('T')
-
-
-def filter_none(xs: List[T]) -> List[T]:
-    return [x for x in xs if x]
-
 
 def main():
-    docs = build('docs', 'v1', credentials=get_credentials(), developerKey=API_KEY)
-    drive = build('drive', 'v3', credentials=get_credentials(), developerKey=API_KEY)
+    docs = build('docs', 'v1', credentials=get_credentials())
+    drive = build('drive', 'v3', credentials=get_credentials())
 
-    document = upsert_document(drive, docs, DOCUMENT_TITLE)
+    folder_id = upsert_folder(drive)
+    document = upsert_document(drive, docs, DOCUMENT_TITLE, folder_id)
     page = {
         "title": DOCUMENT_TITLE,
         "children": [
@@ -75,14 +70,36 @@ def main():
     ).execute()
 
 
-def upsert_document(drive, docs, title):
+def upsert_document(drive, docs, title, folder_id):
     matches = drive.files().list(corpora="user", q="name = '{}'".format(title)).execute()['files']
     if matches:
         document_id = matches[0]['id']
         return get_document(docs, document_id)
 
     print("Creating '{}'".format(title))
-    return docs.documents().create(body={"title": title}).execute()
+    document = docs.documents().create(body={"title": title}).execute()
+    drive.files().update(fileId=document['documentId'], addParents=folder_id).execute()['files']
+    return document
+
+
+FOLDER_NAME = "Roam Export"
+
+
+def upsert_folder(drive):
+    matches = drive.files().list(corpora="user", q="name = '{}'".format(FOLDER_NAME)).execute()['files']
+    if matches:
+        assert matches[0]['mimeType'] == 'application/vnd.google-apps.folder'
+        return matches[0]['id']
+
+    print("Creating {} Folder".format(FOLDER_NAME))
+    folder = drive.files().create(
+        body={
+            'name': FOLDER_NAME,
+            'mimeType': 'application/vnd.google-apps.folder'
+        },
+        fields="id"
+    ).execute()
+    return folder['id']
 
 
 def get_document(docs, document_id):
