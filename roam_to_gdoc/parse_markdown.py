@@ -6,7 +6,10 @@ from html.parser import HTMLParser
 from roam_to_gdoc.element import Style
 
 
-def markdown_to_style_and_text(text):
+def markdown_to_style_and_text(text, page_to_id):
+    def page_name_to_url(label, base, end):
+        return 'https://docs.google.com/document/d/{}'.format(page_to_id(label))
+
     html = markdown.markdown(re.sub(r'__', r'_', text), extensions=[
         WikiLinkExtension(build_url=page_name_to_url, html_class=None)
     ])
@@ -67,9 +70,10 @@ class StyleParser(HTMLParser):
         return len(self.text)
 
 
-def page_name_to_url(label, base, end):
-    return 'https://docs.google.com/document/d/{}'.format(label)
-
-
 if __name__ == '__main__':
-    print(markdown_to_style_and_text("\t\t\t __hello__ my **dudes** \v how [[are]] you __doing__?"))
+    print(
+        markdown_to_style_and_text(
+            "__hello__ my **dudes** \v how [[are]] you __doing__?",
+            lambda title: {'are': 'YEEEEEEE'}[title],
+        )
+    )

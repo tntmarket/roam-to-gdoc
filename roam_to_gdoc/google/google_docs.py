@@ -6,8 +6,8 @@ from roam_to_gdoc.parse_markdown import markdown_to_style_and_text
 from roam_to_gdoc.roam import flatten_children
 
 
-def element_to_updates(element: Element) -> List[Dict]:
-    styles, text = markdown_to_style_and_text(element.text.replace("\n", "\v"))
+def element_to_updates(element: Element, page_to_id) -> List[Dict]:
+    styles, text = markdown_to_style_and_text(element.text.replace("\n", "\v"), page_to_id)
     start = element.indentation + 1
     return [
         {
@@ -57,10 +57,10 @@ def update_paragraph_style(style, start, end):
     }
 
 
-def rewrite_document(docs, document, page):
+def rewrite_document(docs, document, page, page_to_id):
     end_index = get_end_index(document)
     elements = list(reversed(flatten_children(page["children"])))
-    body_length = len('\n'.join(markdown_to_style_and_text(element.text)[1] for element in elements))
+    body_length = len('\n'.join(markdown_to_style_and_text(element.text, page_to_id)[1] for element in elements))
     docs.documents().batchUpdate(
         documentId=document['documentId'],
         body={
@@ -82,7 +82,7 @@ def rewrite_document(docs, document, page):
                     if end_index > 1 else []
                 ),
                 *chain.from_iterable(
-                    element_to_updates(element)
+                    element_to_updates(element, page_to_id)
                     for element in elements
                 ),
                 # Bullet-ify after, to get convert indents into levels
@@ -106,7 +106,7 @@ def rewrite_document(docs, document, page):
                         "range": make_range(1, 2),
                     },
                 },
-                element_to_updates(Element(text=page["title"], heading=0)),
+                element_to_updates(Element(text=page["title"], heading=0), page_to_id),
             ],
         },
     ).execute()

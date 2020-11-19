@@ -14,29 +14,54 @@ DOCUMENT_TITLE = "Test Page Yolo"
 # TODO - Backlinks
 # TODO - {{table}}
 
-pages = [{
-    "title": DOCUMENT_TITLE,
-    "children": [
-        {
-            "string": "YOLO **SWAG** BRO",
-        },
-        {
-            "string": "My **__crayfish__** is [[[[very]] demanding]]",
-            "heading": 1,
-        },
-        {
-            "string": "[Yes](https://www.google.com) it is",
-            "children": [
-                {
-                    "string": "Line...\nBreak?",
-                },
-                {
-                    "string": "Baaaa [humbug]([[Hamburger]])",
-                },
-            ]
-        },
-    ]
-}]
+pages = [
+    {
+        "title": "Yolo Dolo",
+        "children": [
+            {
+                "string": "YOLO **SWAG** BRO",
+            },
+            {
+                "string": "My **__crayfish__** is [[Trolo Molo]]",
+                "heading": 1,
+            },
+            {
+                "string": "[Yes](https://www.google.com) it is",
+                "children": [
+                    {
+                        "string": "Line...\nBreak?",
+                    },
+                    {
+                        "string": "Baaaa [humbug]([[Hamburger]])",
+                    },
+                ]
+            },
+        ]
+    },
+    {
+        "title": "Trolo Molo",
+        "children": [
+            {
+                "string": "Yes it is good",
+                "children": [
+                    {
+                        "string": "No!!",
+                    },
+                    {
+                        "string": "Yes!?",
+                    },
+                ]
+            },
+            {
+                "string": "This goes back to [[Yolo Dolo]] too",
+            },
+            {
+                "string": "Yeah that's right",
+            },
+        ]
+    },
+]
+
 
 def main():
     docs = build('docs', 'v1', credentials=get_credentials())
@@ -51,9 +76,12 @@ def main():
     for page in pages:
         page_name_to_document[page["title"]] = upsert_document(drive, docs, page["title"], folder_id)
 
+    def page_to_id(title):
+        return page_name_to_document[title]['documentId']
+
     for page in pages:
         document = page_name_to_document[page["title"]]
-        rewrite_document(docs, document, page)
+        rewrite_document(docs, document, page, page_to_id)
 
 
 def upsert_document(drive, docs, title, folder_id):
@@ -64,7 +92,7 @@ def upsert_document(drive, docs, title, folder_id):
 
     print("Creating '{}'".format(title))
     document = docs.documents().create(body={"title": title}).execute()
-    drive.files().update(fileId=document['documentId'], addParents=folder_id).execute()['files']
+    drive.files().update(fileId=document['documentId'], addParents=folder_id).execute()
     return document
 
 
