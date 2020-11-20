@@ -8,18 +8,42 @@ from roam_to_gdoc.roam import flatten_children
 
 def element_to_updates(element: Element, page_to_id) -> List[Dict]:
     styles, text = markdown_to_style_and_text(element.text.replace("\n", "\v"), page_to_id)
-    start = element.indentation + 1
     return [
         {
             "insertText": {
-                "text": "\t" * element.indentation + text + "\n",
+                "text": "\n",
                 "location": {
                     "index": 1,
                     "segmentId": None,
                 },
             },
         },
-        update_paragraph_style(element.heading, start, start + 1),
+        # Need to insert newline before deleting bullets,
+        # otherwise will delete previous element's bullet
+        {
+            "deleteParagraphBullets": {
+                "range": make_range(1, 2),
+            },
+        },
+        {
+            "insertText": {
+                "text": "\t" * max(element.indentation - 1, 0) + text + " ",
+                "location": {
+                    "index": 1,
+                    "segmentId": None,
+                },
+            },
+        },
+        *(
+            [{
+                "createParagraphBullets": {
+                    "range": make_range(1, 2),
+                    "bulletPreset": "BULLET_DISC_CIRCLE_SQUARE",
+                },
+            }]
+            if element.indentation > 0 else []
+        ),
+        update_paragraph_style(element.heading, 1, 2),
         *(
             {
                 "updateTextStyle": {
@@ -27,7 +51,7 @@ def element_to_updates(element: Element, page_to_id) -> List[Dict]:
                         style.type: {"url": style.url} if style.type == "link" else True,
                     },
                     "fields": style.type,
-                    "range": make_range(start + style.start, start + style.end),
+                    "range": make_range(1 + style.start, 1 + style.end),
                 },
             } for style in styles
         ),
@@ -63,7 +87,6 @@ def rewrite_document(docs, document, page, page_to_id):
         list(reversed(flatten_children(page["children"])))
         if "children" in page else []
     )
-    body_length = len('\n'.join(markdown_to_style_and_text(element.text, page_to_id)[1] for element in elements))
     docs.documents().batchUpdate(
         documentId=document['documentId'],
         body={
@@ -76,11 +99,6 @@ def rewrite_document(docs, document, page, page_to_id):
                                 "range": make_range(1, end_index),
                             },
                         },
-                        {
-                            "deleteParagraphBullets": {
-                                "range": make_range(1, 2),
-                            },
-                        },
                     ]
                     if end_index > 1 else []
                 ),
@@ -88,13 +106,6 @@ def rewrite_document(docs, document, page, page_to_id):
                     element_to_updates(element, page_to_id)
                     for element in elements
                 ),
-                # Bullet-ify after, to get convert indents into levels
-                {
-                    "createParagraphBullets": {
-                        "range": make_range(1, body_length + 1),
-                        "bulletPreset": "BULLET_DISC_CIRCLE_SQUARE",
-                    },
-                },
                 {
                     "insertText": {
                         "text": "\n",

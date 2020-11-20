@@ -10,10 +10,8 @@ from roam_to_gdoc.google.google_docs import rewrite_document
 
 DOCUMENT_TITLE = "Test Page Yolo"
 
-# TODO - [[One]] ... [[Two]], using recursive regex
 # TODO - [alias]([[link]])
 # TODO - Images
-# TODO - De-dent every bullet once, have the top level be plain paragraphs
 
 # TODO - Attr::
 # TODO - Backlinks
@@ -25,6 +23,19 @@ pages = [
         "children": [
             {
                 "string": "YOLO **SWAG** BRO",
+                "children": [
+                    {
+                        "string": "First was the orange",
+                        "children": [
+                            {
+                                "string": "Then was the pear",
+                            },
+                            {
+                                "string": "Then was the chair",
+                            },
+                        ]
+                    },
+                ]
             },
             {
                 "string": "My **__crayfish__** is [[Trolo Molo]]",
@@ -58,7 +69,7 @@ pages = [
                 ]
             },
             {
-                "string": "This goes back to [[Yolo Dolo]] too",
+                "string": "This goes back to [[P: Yolo Dolo]] too",
             },
             {
                 "string": "Yeah that's right",
@@ -86,7 +97,9 @@ def main():
                 print('Rewriting {}'.format(page['title']))
                 rewrite_document(docs, document, page, title_to_id)
                 # Throttle, to avoid usage limit https://developers.google.com/docs/api/limits
-                sleep(1)
+                sleep(2)
+            else:
+                print("{} hasn't changed since last sync".format(page['title']))
 
 
 document_by_title = {}
