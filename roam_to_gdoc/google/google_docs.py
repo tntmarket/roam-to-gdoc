@@ -59,7 +59,10 @@ def update_paragraph_style(style, start, end):
 
 def rewrite_document(docs, document, page, page_to_id):
     end_index = get_end_index(document)
-    elements = list(reversed(flatten_children(page["children"])))
+    elements = (
+        list(reversed(flatten_children(page["children"])))
+        if "children" in page else []
+    )
     body_length = len('\n'.join(markdown_to_style_and_text(element.text, page_to_id)[1] for element in elements))
     docs.documents().batchUpdate(
         documentId=document['documentId'],

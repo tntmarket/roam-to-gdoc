@@ -1,22 +1,27 @@
+import json
+from time import sleep
+from typing import Dict, Tuple
+
 from googleapiclient.discovery import build
+import iso8601
 
 from roam_to_gdoc.google.credentials import get_credentials
 from roam_to_gdoc.google.google_docs import rewrite_document
 
 DOCUMENT_TITLE = "Test Page Yolo"
 
-# TODO - get actually reading json to work
-
+# TODO - [[One]] ... [[Two]], using recursive regex
 # TODO - [alias]([[link]])
-# TODO - [[a [[nested]] link]]
-# TODO - Attr::
 # TODO - Images
+# TODO - De-dent every bullet once, have the top level be plain paragraphs
+
+# TODO - Attr::
 # TODO - Backlinks
 # TODO - {{table}}
 
 pages = [
     {
-        "title": "Yolo Dolo",
+        "title": "P: Yolo Dolo",
         "children": [
             {
                 "string": "YOLO **SWAG** BRO",
@@ -42,7 +47,7 @@ pages = [
         "title": "Trolo Molo",
         "children": [
             {
-                "string": "Yes it is good",
+                "string": "a [[P: Yolo Dolo]] b",
                 "children": [
                     {
                         "string": "No!!",
@@ -67,33 +72,51 @@ def main():
     docs = build('docs', 'v1', credentials=get_credentials())
     drive = build('drive', 'v3', credentials=get_credentials())
 
-    # with open('tmp/davelu-yelp.json') as f:
-    #     print(json.load(f))
+    with open('tmp/davelu-yelp.json') as f:
+        pages = json.load(f)
 
-    page_name_to_document = {}
+        folder_id = upsert_folder(drive)
 
-    folder_id = upsert_folder(drive)
-    for page in pages:
-        page_name_to_document[page["title"]] = upsert_document(drive, docs, page["title"], folder_id)
+        def title_to_id(title):
+            return upsert_document(drive, docs, title, folder_id)[0]['documentId']
 
-    def page_to_id(title):
-        return page_name_to_document[title]['documentId']
+        for page in pages:
+            document, just_created = upsert_document(drive, docs, page["title"], folder_id)
+            if just_created or page["edit-time"] / 1000 > last_modified(drive, document["documentId"]):
+                print('Rewriting {}'.format(page['title']))
+                rewrite_document(docs, document, page, title_to_id)
+                # Throttle, to avoid usage limit https://developers.google.com/docs/api/limits
+                sleep(1)
 
-    for page in pages:
-        document = page_name_to_document[page["title"]]
-        rewrite_document(docs, document, page, page_to_id)
+
+document_by_title = {}
+just_created_by_title = {}
 
 
-def upsert_document(drive, docs, title, folder_id):
-    matches = drive.files().list(corpora="user", q="name = '{}'".format(title)).execute()['files']
+def upsert_document(drive, docs, title, folder_id) -> Tuple[Dict, bool]:
+    if title in document_by_title:
+        return document_by_title[title], just_created_by_title[title]
+
+    matches = drive.files().list(corpora="user", q="name = '{}'".format(title.replace("'", "\\'"))).execute()['files']
     if matches:
         document_id = matches[0]['id']
-        return get_document(docs, document_id)
+        print("'{}' already exists".format(title))
+        document = get_document(docs, document_id)
+        document_by_title[title] = document
+        just_created_by_title[title] = False
+        return document, False
 
     print("Creating '{}'".format(title))
     document = docs.documents().create(body={"title": title}).execute()
+    document_by_title[title] = document
+    just_created_by_title[title] = True
     drive.files().update(fileId=document['documentId'], addParents=folder_id).execute()
-    return document
+    return document, True
+
+
+def last_modified(drive, document_id: str) -> int:
+    time_string = drive.files().get(fileId=document_id, fields="modifiedTime").execute()["modifiedTime"]
+    return iso8601.parse_date(time_string).timestamp()
 
 
 FOLDER_NAME = "Roam Export"
