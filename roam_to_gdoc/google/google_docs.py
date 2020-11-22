@@ -3,7 +3,7 @@ from typing import List, Dict
 
 from roam_to_gdoc.element import Element
 from roam_to_gdoc.parse_markdown import markdown_to_style_and_text
-from roam_to_gdoc.roam import flatten_children
+from roam_to_gdoc.roam.block_to_elements import flatten_children
 
 
 def element_to_updates(element: Element, page_to_id) -> List[Dict]:

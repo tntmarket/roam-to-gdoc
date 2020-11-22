@@ -4,15 +4,15 @@ from typing import List
 from roam_to_gdoc.element import Element
 
 
-def block_to_elements(json, indentation=0) -> List[Element]:
+def block_to_elements(block, indentation=0) -> List[Element]:
     element = Element(
-        text=json["string"],
+        text=block["string"],
         indentation=indentation,
-        heading=json.get("heading"),
+        heading=block.get("heading"),
     )
 
-    if "children" in json:
-        return [element] + flatten_children(json["children"], indentation + 1)
+    if "children" in block:
+        return [element] + flatten_children(block["children"], indentation + 1)
 
     return [element]
 

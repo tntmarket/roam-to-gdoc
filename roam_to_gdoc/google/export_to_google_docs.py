@@ -1,4 +1,3 @@
-import json
 from time import sleep
 from typing import Dict, Tuple
 
@@ -7,6 +6,7 @@ import iso8601
 
 from roam_to_gdoc.google.credentials import get_credentials
 from roam_to_gdoc.google.google_docs import rewrite_document
+from roam_to_gdoc.roam.read_roam_json import get_pages
 
 DOCUMENT_TITLE = "Test Page Yolo"
 
@@ -83,23 +83,20 @@ def main():
     docs = build('docs', 'v1', credentials=get_credentials())
     drive = build('drive', 'v3', credentials=get_credentials())
 
-    with open('tmp/davelu-yelp.json') as f:
-        pages = json.load(f)
+    folder_id = upsert_folder(drive)
 
-        folder_id = upsert_folder(drive)
+    def title_to_id(title):
+        return upsert_document(drive, docs, title, folder_id)[0]['documentId']
 
-        def title_to_id(title):
-            return upsert_document(drive, docs, title, folder_id)[0]['documentId']
-
-        for page in pages:
-            document, just_created = upsert_document(drive, docs, page["title"], folder_id)
-            if just_created or page["edit-time"] / 1000 > last_modified(drive, document["documentId"]):
-                print('Rewriting {}'.format(page['title']))
-                rewrite_document(docs, document, page, title_to_id)
-                # Throttle, to avoid usage limit https://developers.google.com/docs/api/limits
-                sleep(2)
-            else:
-                print("{} hasn't changed since last sync".format(page['title']))
+    for page in get_pages():
+        document, just_created = upsert_document(drive, docs, page["title"], folder_id)
+        if just_created or page["edit-time"] / 1000 > last_modified(drive, document["documentId"]):
+            print('Rewriting {}'.format(page['title']))
+            rewrite_document(docs, document, page, title_to_id)
+            # Throttle, to avoid usage limit https://developers.google.com/docs/api/limits
+            sleep(2)
+        else:
+            print("{} hasn't changed since last sync".format(page['title']))
 
 
 document_by_title = {}
