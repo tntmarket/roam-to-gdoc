@@ -1,5 +1,9 @@
+import functools
 from itertools import chain
+from time import sleep
 from typing import List, Dict
+
+from googleapiclient.errors import HttpError
 
 from roam_to_gdoc.element import Element
 from roam_to_gdoc.parse_markdown import markdown_to_style_and_text
@@ -87,41 +91,63 @@ def rewrite_document(docs, document, page, page_to_id):
         list(reversed(flatten_children(page["children"])))
         if "children" in page else []
     )
+    # Fill in the document backwards, so we can keep 0 index offset
+    update_document(docs, document['documentId'], [
+        *(
+            [
+                {
+                    "deleteContentRange": {
+                        "range": make_range(1, end_index),
+                    },
+                },
+            ]
+            if end_index > 1 else []
+        ),
+        *chain.from_iterable(
+            element_to_updates(element, page_to_id)
+                for element in elements
+        ),
+        {
+            "insertText": {
+                "text": "\n",
+                "location": {
+                    "index": 1,
+                    "segmentId": None,
+                },
+            },
+        },
+        {
+            "deleteParagraphBullets": {
+                "range": make_range(1, 2),
+            },
+        },
+        element_to_updates(Element(text=page["title"], heading=0), page_to_id),
+    ])
+
+
+def with_retry(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        wait = 2
+        for i in range(6):
+            try:
+                return f(*args, **kwargs)
+            except HttpError as error:
+                if error.resp.status == 429:
+                    sleep(wait)
+                    wait *= 2
+                else:
+                    raise error
+
+    return wrapper
+
+
+@with_retry
+def update_document(docs, document_id, requests):
     docs.documents().batchUpdate(
-        documentId=document['documentId'],
+        documentId=document_id,
         body={
-            # Fill in the document backwards, so we can keep 0 index offset
-            "requests": [
-                *(
-                    [
-                        {
-                            "deleteContentRange": {
-                                "range": make_range(1, end_index),
-                            },
-                        },
-                    ]
-                    if end_index > 1 else []
-                ),
-                *chain.from_iterable(
-                    element_to_updates(element, page_to_id)
-                    for element in elements
-                ),
-                {
-                    "insertText": {
-                        "text": "\n",
-                        "location": {
-                            "index": 1,
-                            "segmentId": None,
-                        },
-                    },
-                },
-                {
-                    "deleteParagraphBullets": {
-                        "range": make_range(1, 2),
-                    },
-                },
-                element_to_updates(Element(text=page["title"], heading=0), page_to_id),
-            ],
+            "requests": requests,
         },
     ).execute()
 
