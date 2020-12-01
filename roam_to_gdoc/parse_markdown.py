@@ -2,7 +2,7 @@ import re
 import xml.etree.ElementTree as etree
 
 import markdown
-from markdown.extensions.wikilinks import WikiLinkExtension, WikiLinksInlineProcessor
+from markdown.extensions.wikilinks import WikiLinkExtension
 from html.parser import HTMLParser
 
 from markdown.inlinepatterns import InlineProcessor
@@ -48,7 +48,7 @@ def markdown_to_style_and_text(text, page_to_id):
     ])
     parser = StyleParser()
     parser.feed(html)
-    return parser.styles, parser.text
+    return parser.styles, parser.text, parser.images
 
 
 class StyleParser(HTMLParser):
@@ -59,6 +59,7 @@ class StyleParser(HTMLParser):
         self.italics = []
         self.links = []
         self.styles = []
+        self.images = []
 
     def handle_starttag(self, tag, attrs):
         if tag == 'strong':
@@ -67,6 +68,8 @@ class StyleParser(HTMLParser):
             self.italics.append(self.i())
         elif tag == 'a':
             self.links.append((self.i(), attrs[0][1]))
+        elif tag == 'img':
+            self.images.append((self.i(), attrs[1][1]))
 
     def handle_endtag(self, tag):
         if tag == 'strong':
@@ -128,5 +131,11 @@ if __name__ == '__main__':
                 'P: are': 'YEEEEEEE',
                 'hello [[yeah]] blah': 'heyblah',
             }.get,
+        )
+    )
+    print(
+        markdown_to_style_and_text(
+            "Some image ![](https://www.google.com) thing",
+            {}.get,
         )
     )

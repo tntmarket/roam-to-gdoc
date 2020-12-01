@@ -11,7 +11,6 @@ from roam_to_gdoc.roam.read_roam_json import get_pages
 DOCUMENT_TITLE = "Test Page Yolo"
 
 # TODO - [alias]([[link]])
-# TODO - Images
 
 # TODO - Attr::
 # TODO - Backlinks

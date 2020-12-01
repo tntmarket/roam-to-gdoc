@@ -11,7 +11,7 @@ from roam_to_gdoc.roam.block_to_elements import flatten_children
 
 
 def element_to_updates(element: Element, page_to_id) -> List[Dict]:
-    styles, text = markdown_to_style_and_text(element.text.replace("\n", "\v"), page_to_id)
+    styles, text, images = markdown_to_style_and_text(element.text.replace("\n", "\v"), page_to_id)
     return [
         {
             "insertText": {
@@ -58,6 +58,17 @@ def element_to_updates(element: Element, page_to_id) -> List[Dict]:
                     "range": make_range(1 + style.start, 1 + style.end),
                 },
             } for style in styles
+        ),
+        *(
+            {
+                "insertInlineImage": {
+                    "uri": url,
+                    "location": {
+                        "index": index,
+                        "segmentId": None,
+                    },
+                },
+            } for (index, url) in images
         ),
     ]
 
