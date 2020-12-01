@@ -64,7 +64,7 @@ def element_to_updates(element: Element, page_to_id) -> List[Dict]:
                 "insertInlineImage": {
                     "uri": url,
                     "location": {
-                        "index": index,
+                        "index": 1 + index,
                         "segmentId": None,
                     },
                 },

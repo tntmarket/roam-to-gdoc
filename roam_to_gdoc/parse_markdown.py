@@ -135,7 +135,7 @@ if __name__ == '__main__':
     )
     print(
         markdown_to_style_and_text(
-            "Some image ![](https://www.google.com) thing",
+            "![](https://www.google.com) thing",
             {}.get,
         )
     )

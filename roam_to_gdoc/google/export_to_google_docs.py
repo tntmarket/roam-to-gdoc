@@ -6,6 +6,7 @@ import iso8601
 
 from roam_to_gdoc.google.credentials import get_credentials
 from roam_to_gdoc.google.google_docs import rewrite_document
+from roam_to_gdoc.roam.block_to_elements import block_to_edit_times, flatten_children
 from roam_to_gdoc.roam.read_roam_json import get_pages
 
 DOCUMENT_TITLE = "Test Page Yolo"
@@ -78,6 +79,13 @@ pages = [
 ]
 
 
+def last_edit_time_of_page(page):
+    if "children" in page:
+        return max(flatten_children(page['children'], map_fn=block_to_edit_times))
+
+    return page["edit-time"]
+
+
 def main():
     docs = build('docs', 'v1', credentials=get_credentials())
     drive = build('drive', 'v3', credentials=get_credentials())
@@ -89,11 +97,9 @@ def main():
 
     for page in get_pages():
         document, just_created = upsert_document(drive, docs, page["title"], folder_id)
-        if just_created or page["edit-time"] / 1000 > last_modified(drive, document["documentId"]):
+        if just_created or last_edit_time_of_page(page) / 1000 > last_modified(drive, document["documentId"]):
             print('Rewriting {}'.format(page['title']))
             rewrite_document(docs, document, page, title_to_id)
-            # Throttle, to avoid usage limit https://developers.google.com/docs/api/limits
-            sleep(2)
         else:
             print("{} hasn't changed since last sync".format(page['title']))
 
