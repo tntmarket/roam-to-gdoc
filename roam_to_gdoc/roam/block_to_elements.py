@@ -5,14 +5,20 @@ from roam_to_gdoc.element import Element
 
 
 def block_to_elements(block, indentation=0) -> List[Element]:
+    heading = block.get("heading")
     element = Element(
         text=block["string"],
         indentation=indentation,
-        heading=block.get("heading"),
+        heading=heading,
     )
 
     if "children" in block:
-        return [element] + flatten_children(block["children"], indentation + 1, block_to_elements)
+        return [element] + flatten_children(
+            block["children"],
+            # Don't indent headings, it looks nicer
+            indentation + (0 if heading else 1),
+            block_to_elements,
+        )
 
     return [element]
 
